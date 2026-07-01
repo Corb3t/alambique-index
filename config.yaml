@@ -1,0 +1,105 @@
+# Alembic Index — single control file. Everything swappable without code edits.
+#
+# Set each corpus.<name>.source to wherever your documents live on the host.
+# Sources can be plain local folders or cloud-synced folders (iCloud Drive, etc.);
+# scripts/materialize_corpus.sh downloads any "dataless" placeholders before ingest.
+# Collection names (ia_writer / books_papers / cooking) are arbitrary labels — rename
+# or add as many as you like; the web console can scope queries to or away from each.
+
+corpus:
+  ia_writer:
+    # Your Markdown / iA Writer notes. HOST path that materialize_corpus.sh copies from.
+    source: "/path/to/your/notes"          # EDIT: absolute path to your notes
+    # Container read-only mount that ingest walks (compose maps ./.staging -> /corpus).
+    mount:  "/corpus/ia_writer"
+    include: ["**/*.md", "**/*.markdown"]
+    # Example folders to skip — adjust to your own structure.
+    exclude: ["Templates/**", "Archive/**", "Assets/**", "Inbox/**"]
+  books_papers:
+    source: "/path/to/your/library"        # EDIT: absolute path to your books + papers
+    mount:  "/corpus/books_papers"
+    include: ["**/*.pdf", "**/*.epub"]
+    exclude: ["Cooking/**"]            # recipes live in their own 'cooking' corpus below
+  cooking:
+    source: "/path/to/your/library/cooking"  # EDIT: recipes/cookbooks (kept separate so
+    mount:  "/corpus/cooking"                # they don't pollute non-cooking queries)
+    include: ["**/*.pdf", "**/*.epub"]
+    exclude: []
+
+staging:
+  # Host-side materialized copy of the corpus (downloaded out of the source folders).
+  # Bind-mounted READ-ONLY into the container as /corpus.
+  dir: "./.staging"
+
+ingest:
+  # Skip embedding a file whose EXACT content already exists at another path
+  # (content-hash dedup). The first copy seen owns the nodes; identical copies are
+  # recorded as duplicates and not re-embedded. Set false to index every path.
+  dedup: true
+
+atlas:
+  # The console's 2-D semantic map (the ATLAS view), built from the chunk embeddings.
+  method: auto      # auto = UMAP if installed (requirements-atlas.txt) else PCA | umap | pca
+  clusters: 12      # KMeans topic clusters for coloring (0 = color by corpus only)
+  neighbors: 15     # UMAP n_neighbors (larger = more global structure)
+  min_dist: 0.1     # UMAP min_dist (smaller = tighter clumps)
+  auto: true        # rebuild the map at the end of each ingest
+  snippet_chars: 160  # how much of each passage to keep for the map's hover preview
+
+chunking:
+  size: 1024          # target chunk size (~tokens) for sub-splitting sections
+  overlap: 128
+  ia_writer:
+    split_on: h2          # chunk on ## boundaries
+    merge_min_chars: 200  # merge a trivially short ## section into its neighbour
+  pdf:
+    strip_margins: true
+    margin_band_pct: 0.08 # top/bottom 8% are header/footer bands
+    two_column: auto      # auto | true | false
+    drop_references: true
+    ocr: auto             # auto | off — OCR image-only pages locally (ocrmypdf + Tesseract)
+    ocr_language: eng     # Tesseract language(s), e.g. "eng" or "eng+spa"
+
+embedding:
+  provider: ollama
+  model: bge-m3                                   # native Ollama; changing this forces a full re-embed
+  base_url: "http://host.docker.internal:11434"   # override with OLLAMA_BASE_URL on the host
+  dim: 1024
+
+generation:
+  provider: ollama
+  model: "qwen3:30b-a3b"
+  base_url: "http://host.docker.internal:11434"
+  temperature: 0.1
+  num_ctx: 8192
+  request_timeout: 180
+  keep_alive: "24h"       # how long Ollama keeps the chat model in memory after a query
+                          # (fewer cold reloads). "-1" = never unload; "30m" = free RAM when idle
+
+retrieval:
+  top_k: 6
+  hybrid: true            # BM25 + vector fusion
+  vector_weight: 0.6
+  over_fetch: 3           # retrieve top_k*over_fetch candidates, then trim (more precise)
+  max_per_doc: 2          # at most N chunks from any single document in the final results
+  min_score_ratio: 0.0    # drop fused hits scoring below ratio*top_score (0 = off)
+  rerank: "bge"           # "off" | "bge" | "llm" — reorder the candidate pool for precision
+  rerank_model: "BAAI/bge-reranker-v2-m3"   # cross-encoder for rerank:bge (needs the rerank extra)
+
+vector_store:
+  type: chroma            # chroma (local, default) | qdrant (server — self-hosted migration)
+  collection: corpus
+  # Chroma location: the Docker NAMED VOLUME in-container, or ./.data host-direct (native app).
+  path: "/data/chroma"
+  qdrant:                 # used only when type: qdrant (needs requirements-qdrant.txt)
+    url: "http://localhost:6333"
+    api_key: ""
+    path: ""              # set to a folder for server-less embedded Qdrant instead of a server
+
+server:
+  bind: "127.0.0.1"       # localhost only; never 0.0.0.0
+  port: 8000              # optional API; the CLI is primary
+  # Cross-origin allowlist for a decoupled frontend (e.g. a static site reaching this
+  # API over a private tunnel). Empty = same-origin only (the local app).
+  # List exact origins, never "*". e.g. ["https://rag.example.com"]
+  cors_origins: []

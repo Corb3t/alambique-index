@@ -1,0 +1,36 @@
+<svg viewBox="0 0 440 492" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t">
+  <title id="t">Alembic Index — copper distillation still</title>
+  <g fill="none" stroke="#7A4B3A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- vapor (verdigris patina) -->
+    <path d="M300 120 q-9 -13 0 -26 q9 -13 0 -26" stroke="#49A078" stroke-width="2.2"/>
+    <path d="M314 124 q-9 -13 0 -26 q9 -13 0 -26" stroke="#49A078" stroke-width="2.2"/>
+    <!-- furnace base + flame -->
+    <path d="M206 398 L374 398"/>
+    <path d="M224 398 L231 432 M356 398 L349 432"/>
+    <path d="M268 410 q7 12 0 25 M290 410 q7 12 0 25 M312 410 q7 12 0 25" stroke="#B87333" stroke-width="2.4"/>
+    <!-- pot (cucurbit) -->
+    <circle cx="290" cy="312" r="84" fill="#F4F1EA"/>
+    <!-- liquid (baked piña) -->
+    <path d="M210 330 Q290 356 370 330 A84 84 0 0 1 210 330 Z" fill="#C67B5C" fill-opacity=".5" stroke="none"/>
+    <!-- collar -->
+    <path d="M268 230 L272 214 L308 214 L312 230"/>
+    <!-- onion dome / capital (polished copper) -->
+    <path d="M272 214 C248 208,242 184,262 166 C276 152,282 150,290 146 C298 150,304 152,318 166 C338 184,332 208,308 214 Z" stroke="#B87333"/>
+    <path d="M290 146 L290 138" stroke="#B87333"/>
+    <circle cx="290" cy="134" r="4.5" fill="#B87333" stroke="none"/>
+    <!-- lyne arm / swan neck (polished copper) -->
+    <path d="M252 178 C210 168,168 188,150 230 C140 256,135 270,132 286" stroke="#B87333" stroke-width="3.2"/>
+    <!-- worm tub -->
+    <rect x="104" y="286" width="56" height="130" rx="13" fill="#F4F1EA"/>
+    <!-- worm coil (verdigris) -->
+    <path d="M132 298 C158 304,158 320,132 326 C106 332,106 348,132 354 C158 360,158 376,132 382 C106 388,106 404,132 410" stroke="#49A078" stroke-width="2.4"/>
+    <!-- spout -->
+    <path d="M132 416 L132 430 Q132 438 124 438 L112 438"/>
+    <!-- drip (baked piña) -->
+    <circle cx="112" cy="446" r="3.6" fill="#C67B5C" stroke="none"/>
+    <!-- receiving flask -->
+    <circle cx="108" cy="452" r="28" fill="#F4F1EA"/>
+    <path d="M100 430 L100 426 L116 426 L116 430"/>
+    <path d="M108 480 a28 28 0 0 0 24 -14 a27 27 0 0 0 -48 0 a28 28 0 0 0 24 14 Z" fill="#C67B5C" fill-opacity=".5" stroke="none"/>
+  </g>
+</svg>
