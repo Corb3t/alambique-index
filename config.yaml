@@ -1,4 +1,4 @@
-# Alembic Index — single control file. Everything swappable without code edits.
+# Alambique Index — single control file. Everything swappable without code edits.
 #
 # Set each corpus.<name>.source to wherever your documents live on the host.
 # Sources can be plain local folders or cloud-synced folders (iCloud Drive, etc.);

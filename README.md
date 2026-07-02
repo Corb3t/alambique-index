@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="./assets/logo.svg" alt="Alembic Index" width="108">
+  <img src="./assets/logo.svg" alt="Alambique Index" width="108">
 </p>
 
-<h1 align="center">Alembic Index</h1>
+<h1 align="center">Alambique Index</h1>
 
 <p align="center">
   <strong>A local, private RAG over your own reference library.</strong><br>
@@ -15,18 +15,18 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-B87333.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Python-3.10%2B-5C7D73.svg" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/network-offline%20by%20design-2C2C2C.svg" alt="offline by design">
-  <a href="https://alembic.uihub.app/"><img src="https://img.shields.io/badge/live-landing%20page-8C5220.svg" alt="Live landing page"></a>
+  <a href="https://alambique.uihub.app/"><img src="https://img.shields.io/badge/live-landing%20page-8C5220.svg" alt="Live landing page"></a>
 </p>
 
 <p align="center">
-  <a href="https://alembic.uihub.app/"><img src="./assets/hero.jpg" alt="Alembic Index — ask your own library anything" width="840"></a>
+  <a href="https://alambique.uihub.app/"><img src="./assets/hero.jpg" alt="Alambique Index — ask your own library anything" width="840"></a>
 </p>
 
 > **Privacy invariants.** Models run on `localhost`; the container publishes no ports; PDF
 > parsing is 100% local (PyMuPDF — **never** a cloud parser); the vector database is touched
 > only from inside the container. After first setup, the whole thing works with the network off.
 
-Alembic Index started as a **proof-of-concept on a single Apple Silicon Mac** (developed on an
+Alambique Index started as a **proof-of-concept on a single Apple Silicon Mac** (developed on an
 M-series MacBook Pro with 48 GB of unified memory). It is built to move to a **self-hosted Docker
 server** later with no code changes — see [Roadmap](#roadmap--self-hosted-migration).
 
@@ -47,7 +47,7 @@ for scanned pages — so citations point at real passages instead of garbled tex
 
 ## What it looks like
 
-**Landing page — [alembic.uihub.app](https://alembic.uihub.app/).** A plain-language tour of how
+**Landing page — [alambique.uihub.app](https://alambique.uihub.app/).** A plain-language tour of how
 local RAG works, ending in a live, interactive **Atlas**: type a question and watch it beam into a
 real embedded corpus and light up the passages it retrieves.
 
@@ -56,8 +56,8 @@ answers with inline `[n]` citations, a click-through source inspector, corpus / 
 filters, a semantic-map Atlas, and a drafting scratchpad. Fully offline, single-file, no build step.
 
 <p align="center">
-  <img src="./assets/palette.png" alt="The Alembic Agave color system shared by the console and landing page" width="660"><br>
-  <sub><em>The "Alembic Agave" palette the console and landing page share.</em></sub>
+  <img src="./assets/palette.png" alt="The Alambique Agave color system shared by the console and landing page" width="660"><br>
+  <sub><em>The "Alambique Agave" palette the console and landing page share.</em></sub>
 </p>
 
 > **Add UI screenshots here.** Capture your running console (a conversation showing `[n]` citations)
@@ -82,7 +82,7 @@ filters, a semantic-map Atlas, and a drafting scratchpad. Fully offline, single-
                  │ host.docker.internal:11434                     │  ./.staging
                  │ (HTTP, localhost)                              │  → /corpus :ro
  ┌───────────────┴──────────────────── container ────────────────┴──────────────┐
- │  alembic-index image  (one image, three entrypoints)                          │
+ │  alambique-index image  (one image, three entrypoints)                          │
  │                                                                               │
  │   ingest:  walk /corpus → parse (md/epub/pdf) → chunk → embed → store         │
  │   ask:     retrieve (BM25 + vector) → generate → answer + citations           │
@@ -166,8 +166,8 @@ to or away from any of them (handy for keeping, say, recipes out of your researc
 ## Quickstart (Docker — the portable path)
 
 ```bash
-git clone https://github.com/Corb3t/alembic-rag.git
-cd alembic-rag
+git clone https://github.com/Corb3t/alambique-index.git
+cd alambique-index
 
 # 1. Materialize the corpus into ./.staging (downloads any cloud placeholders)
 ./scripts/materialize_corpus.sh
@@ -214,7 +214,7 @@ it works **fully offline**.
 ./scripts/migrate_index_from_docker.sh
 ```
 
-**Daily use:** double-click **`Alembic-Index.command`** (drag it to your Dock for one-click launch).
+**Daily use:** double-click **`Alambique-Index.command`** (drag it to your Dock for one-click launch).
 It self-installs a virtualenv on first run, ensures Ollama is up, starts the console, and opens
 `http://localhost:8000`. Close the window to stop. After setup it's fully offline — local models,
 local index, local GUI.
@@ -232,14 +232,14 @@ much faster than in-container. Enable it once, then pick `bge` in the Rerank fil
 Requires Python 3.10+ and the two models pulled. The Docker path above stays for the eventual
 server migration.
 
-For the CLI host-direct: `source .venv/bin/activate` then `python -m alembic_index.ask "…"` with the
+For the CLI host-direct: `source .venv/bin/activate` then `python -m alambique_index.ask "…"` with the
 `OLLAMA_BASE_URL` and index-path environment variables the launcher sets.
 
 ---
 
 ## How it works
 
-**Parsing & chunking** (`alembic_index/parsers/`, framework-agnostic and unit-tested):
+**Parsing & chunking** (`alambique_index/parsers/`, framework-agnostic and unit-tested):
 
 - **Markdown / iA Writer** — reads YAML frontmatter (`title`, `date`, `tags`), captures the H1
   title, and chunks on `##` boundaries. Heading detection is fence-aware (a `##` inside a code
@@ -376,13 +376,13 @@ Dockerfile                + Tesseract/ocrmypdf for OCR; optional BGE reranker (I
 requirements.txt          pinned; regenerate from requirements.in
 requirements-rerank.txt   optional: BGE cross-encoder reranker (torch)
 requirements-atlas.txt    optional: UMAP for the semantic map
-Alembic-Index.command     native launcher (self-installing venv → serves the console)
+Alambique-Index.command     native launcher (self-installing venv → serves the console)
 Update-Index.command      native re-ingest launcher
 scripts/
   materialize_corpus.sh   host: sync-folder → ./.staging (reads corpora + excludes from config)
   migrate_index_from_docker.sh   copy an existing Docker index → ./.data (no re-ingest)
   atlas_sample.py         export a privacy-stripped sample of the semantic map
-alembic_index/
+alambique_index/
   config.py               typed access to config.yaml (+ env overrides, tag slugs)
   walk.py                 corpus file walking (include/exclude) — unit-tested
   parsers/                markdown_ia.py · epub.py · pdf.py — unit-tested
