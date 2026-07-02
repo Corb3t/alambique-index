@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.svg" alt="Alambique Index" width="108">
+  <img src="./assets/emblem-mark.png" alt="Alambique Index" width="120">
 </p>
 
 <h1 align="center">Alambique Index</h1>
