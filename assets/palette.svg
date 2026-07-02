@@ -1,0 +1,58 @@
+<svg viewBox="0 0 1024 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t">
+  <title id="t">Alambique Agave — color palette</title>
+  <rect width="1024" height="480" fill="#F4F1EA"/>
+
+  <text x="48" y="72" font-family="'Playfair Display',Georgia,serif" font-size="30" font-weight="700" fill="#2C2C2C">Alambique<tspan fill="#B87333">·</tspan>Index</text>
+  <text x="50" y="100" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="12.5" letter-spacing="3.5" fill="#6E5B49">AGAVE  PALETTE</text>
+
+  <!-- chips -->
+  <g font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
+    <!-- 1 Limestone -->
+    <rect x="48"  y="140" width="112" height="150" rx="8" fill="#F4F1EA" stroke="#2C2C2C" stroke-opacity=".22"/>
+    <text x="104" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Limestone</text>
+    <text x="104" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#F4F1EA</text>
+    <text x="104" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">BACKGROUND</text>
+    <!-- 2 Volcanic Ash -->
+    <rect x="184" y="140" width="112" height="150" rx="8" fill="#2C2C2C"/>
+    <text x="240" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Volcanic Ash</text>
+    <text x="240" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#2C2C2C</text>
+    <text x="240" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">TEXT / INK</text>
+    <!-- 3 Agave Teal -->
+    <rect x="320" y="140" width="112" height="150" rx="8" fill="#5C7D73"/>
+    <text x="376" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Agave Teal</text>
+    <text x="376" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#5C7D73</text>
+    <text x="376" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">PRIMARY</text>
+    <!-- 4 Polished Copper -->
+    <rect x="456" y="140" width="112" height="150" rx="8" fill="#B87333"/>
+    <text x="512" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Polished Copper</text>
+    <text x="512" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#B87333</text>
+    <text x="512" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">ACCENT / LINKS</text>
+    <!-- 5 Baked Piña -->
+    <rect x="592" y="140" width="112" height="150" rx="8" fill="#C67B5C"/>
+    <text x="648" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Baked Piña</text>
+    <text x="648" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#C67B5C</text>
+    <text x="648" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">HIGHLIGHT</text>
+    <!-- 6 Verdigris -->
+    <rect x="728" y="140" width="112" height="150" rx="8" fill="#49A078"/>
+    <text x="784" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Verdigris</text>
+    <text x="784" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#49A078</text>
+    <text x="784" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">SUCCESS</text>
+    <!-- 7 Tarnished Still -->
+    <rect x="864" y="140" width="112" height="150" rx="8" fill="#7A4B3A"/>
+    <text x="920" y="314" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2C">Tarnished Still</text>
+    <text x="920" y="334" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#7A4B3A">#7A4B3A</text>
+    <text x="920" y="356" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="1" fill="#6E5B49">SECONDARY</text>
+  </g>
+
+  <!-- suggested balance bar -->
+  <text x="48" y="402" font-family="ui-monospace,Menlo,monospace" font-size="10" letter-spacing="2" fill="#6E5B49">SUGGESTED BALANCE</text>
+  <g>
+    <rect x="48"  y="414" width="464" height="22" fill="#F4F1EA" stroke="#2C2C2C" stroke-opacity=".22"/>
+    <rect x="512" y="414" width="139" height="22" fill="#5C7D73"/>
+    <rect x="651" y="414" width="84"  height="22" fill="#B87333"/>
+    <rect x="735" y="414" width="65"  height="22" fill="#C67B5C"/>
+    <rect x="800" y="414" width="56"  height="22" fill="#49A078"/>
+    <rect x="856" y="414" width="64"  height="22" fill="#7A4B3A"/>
+    <rect x="920" y="414" width="56"  height="22" fill="#2C2C2C"/>
+  </g>
+</svg>
