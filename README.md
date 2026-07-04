@@ -1,8 +1,11 @@
 <p align="center">
-  <img src="./assets/emblem-mark.png" alt="Alambique Index" width="120">
+  <a href="https://alambique.uihub.app/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./assets/logo-card.svg">
+      <img src="./assets/logo.svg" alt="Alambique Index — private reference library RAG" width="400">
+    </picture>
+  </a>
 </p>
-
-<h1 align="center">Alambique Index</h1>
 
 <p align="center">
   <strong>A local, private RAG over your own reference library.</strong><br>
@@ -48,21 +51,25 @@ for scanned pages — so citations point at real passages instead of garbled tex
 ## What it looks like
 
 **Landing page — [alambique.uihub.app](https://alambique.uihub.app/).** A plain-language tour of how
-local RAG works, ending in a live, interactive **Atlas**: type a question and watch it beam into a
-real embedded corpus and light up the passages it retrieves.
+local RAG works, ending in two live, interactive demos built entirely in client-side JS: the
+**Prompt Tracer**, a narrated walk-through of retrieval against a real embedded corpus with a
+CRT-terminal readout of each stage, and the **Prompt Lab**, where you ask a demo library anything and
+watch hybrid retrieval re-rank the passages in real time as you slide keyword against meaning, flip
+the reranker, or change how many results survive.
 
 **The console** (`http://localhost:8000`) is a conversation-first research assistant — streaming
 answers with inline `[n]` citations, a click-through source inspector, corpus / tag / reranker
-filters, a semantic-map Atlas, and a drafting scratchpad. Fully offline, single-file, no build step.
+filters, a semantic-map Atlas, a drafting scratchpad, and a retrieval-quality dashboard fed by every
+query it logs. Fully offline, single-file, no build step.
 
 <p align="center">
   <img src="./assets/palette.png" alt="The Alambique Agave color system shared by the console and landing page" width="660"><br>
   <sub><em>The "Alambique Agave" palette the console and landing page share.</em></sub>
 </p>
 
-> **Add UI screenshots here.** Capture your running console (a conversation showing `[n]` citations)
-> and the live landing page, drop the PNGs into [`assets/`](./assets), and embed them in this
-> section — e.g. `![Console](./assets/console.png)`.
+> **Add UI screenshots here.** Capture your running console (a conversation showing `[n]` citations),
+> the retrieval-quality dashboard, and the live landing page, drop the PNGs into
+> [`assets/`](./assets), and embed them in this section — e.g. `![Console](./assets/console.png)`.
 
 ---
 
@@ -144,13 +151,18 @@ generation:
 
 retrieval:
   top_k: 6
-  hybrid: true          # BM25 + vector fusion
-  over_fetch: 3         # fetch top_k*over_fetch candidates, then trim
-  max_per_doc: 2        # cap chunks from any single document
-  rerank: "bge"         # "off" | "bge" | "llm"
+  hybrid: true              # BM25 + vector fusion
+  over_fetch: 3             # fetch top_k*over_fetch candidates, then trim
+  max_per_doc: 2            # cap chunks from any single document
+  filter_extraction: true   # infer corpus/doc_type filters from phrasing; explicit filters always win
+  rerank: "bge"             # "off" | "bge" | "llm"
 
 vector_store:
   type: chroma          # chroma (local) | qdrant (server)
+
+logging:
+  queries: true          # log every ask/stream to a local SQLite DB; powers the /dashboard.
+                          # strictly observational — never influences ranking. kill switch: false
 ```
 
 Split your corpus into as many named collections as you like — the web console can scope queries
@@ -287,26 +299,78 @@ The console is a conversation-first research assistant:
 
 - **Conversation thread** with streaming answers and inline `[n]` citations; follow-ups carry
   context. Click a citation or source to open the **inspector**, which loads the original and
-  highlights the retrieved passage.
-- **Filters**: corpus, doc-type, tag chips, top-k, per-doc cap, and reranker (`bge`/`llm`).
-- **Dashboard** popover: store status, per-corpus counts, last indexed, OCR backlog.
-- **Atlas**: a 2-D semantic map of the corpus (UMAP/PCA over the chunk embeddings, KMeans-colored).
+  highlights the retrieved passage. Every finished answer gets ▲/▼ feedback buttons.
+- **Filters**: corpus, doc-type, tag chips, top-k, per-doc cap, and reranker (`bge`/`llm`) — or let
+  phrasing set them for you (see [Filter extraction](#filter-extraction) below).
+- **Status** popover: store status, per-corpus counts, last indexed, OCR backlog.
+- **Atlas**: a 2-D semantic map of the corpus (UMAP/PCA over the chunk embeddings, KMeans-colored,
+  c-TF-IDF cluster labels).
 - **Scratchpad**: pin answers and passages, edit into a draft, export Markdown.
 - Fully self-hosted fonts and assets — **no CDN, no build step, works offline.**
+
+Every ask/stream is logged to a local SQLite query log that feeds a full **retrieval-quality
+dashboard** at `/dashboard` — see [Measuring retrieval quality](#measuring-retrieval-quality).
 
 JSON API:
 
 ```bash
-curl localhost:8000/health      # store status, ingest stats, OCR backlog
-curl localhost:8000/facets      # corpora / tags / doc_types for the filters
+curl localhost:8000/health           # store status, ingest stats, OCR backlog
+curl localhost:8000/facets           # corpora / tags / doc_types for the filters
 curl -s localhost:8000/ask        -H 'content-type: application/json' -d '{"question":"…","corpus":"books_papers","top_k":6}'
 curl -s localhost:8000/ask/stream -H 'content-type: application/json' -d '{"question":"…","history":[],"rerank":"bge"}'
+curl -X POST localhost:8000/feedback -H 'content-type: application/json' -d '{"query_id":"…","verdict":"up"}'
+curl localhost:8000/metrics/summary  # citation rate, never-surfaced docs, stage funnel, latency
 ```
 
-`POST /ask` returns `{answer, sources[]}`; `POST /ask/stream` streams NDJSON events
-(`condensed` → `sources` → `token…` → `done`). Both accept `tags`, `corpus`, `doc_type`, `top_k`,
+`POST /ask` returns `{answer, sources[], query_id, inferred_filters}`; `POST /ask/stream` streams
+NDJSON events (`condensed` → `filters?` → `sources` → `token…` → `done` — `done` carries the
+`query_id` used to submit `/feedback`). Both accept `tags`, `corpus`, `doc_type`, `top_k`,
 `max_per_doc`, `rerank`, and `history`. `GET /source` serves a document for the inspector
-(path-constrained to the corpus). Interactive docs at `/docs`.
+(path-constrained to the corpus). `GET /metrics/summary | /metrics/docs | /metrics/funnel |
+/metrics/latency | /metrics/recent` back the dashboard. Interactive docs at `/docs`.
+
+### Filter extraction
+
+When no explicit filter is set, conservative phrasing rules infer one from the question —
+"my notes on…" scopes to a Markdown/notes corpus, "the paper that…" to PDFs, "…recipe" to a
+`cooking`-tagged corpus if you have one. Explicit filters always win, and the console shows an
+"↳ scoped to: … auto" line when it fires. Turn it off with `retrieval.filter_extraction: false`.
+
+---
+
+## Measuring retrieval quality
+
+Retrieval quality is measurable, not vibes-based — both pieces below are strictly local and
+strictly observational; neither ever influences ranking.
+
+**Query log + dashboard.** Every ask/stream is logged to a local SQLite DB next to the vector
+store: the question, retrieval params, the fused pool and final context per query, which chunks
+the answer actually cited (parsed from the `[n]` brackets), and per-stage latency. Kill switch:
+`logging.queries: false` or `CORPUS_RAG_QLOG=0`. Open `http://localhost:8000/dashboard` for:
+
+- **Citation rate per document** — of the times a chunk reached the final context, how often the
+  answer actually cited it. Retrieved-but-never-cited is a signal that a document is noise.
+- **Never-surfaced documents** — indexed files that have never appeared in a fused pool, meaning
+  their chunking or ingest needs work.
+- **Stage funnel** — where candidates die: vector/BM25 → fused (RRF) → final → cited.
+- **Latency by day**, split retrieve vs. generate.
+- **Recent queries** with the ▲/▼ feedback already collected in the console — thumbed-down
+  queries are the best source of new eval cases.
+
+**Eval harness.** A golden set of question → expected-source cases (`tests/eval/golden.yaml`,
+seeded from your own corpus and grown from thumbed-down queries) is scored against the live
+index. It's retrieval-only, so a full run takes seconds:
+
+```bash
+./scripts/eval.sh                    # host-direct index: venv + env handled for you
+./scripts/eval.sh --json report.json # keep the full report
+# or by hand, with the right venv + env for your run mode:
+python -m alambique_index.evaluation
+```
+
+Per case: hit@k on the fused pool, hit@k on the final context, and MRR. The run exits nonzero
+when `thresholds.hit_rate_final` is missed — run it before and after any change to chunking,
+reranker, `top_k`, or the embedding model.
 
 ---
 
@@ -319,7 +383,8 @@ footers, and a references section):
 ```bash
 pip install -r requirements.txt pytest   # full stack (API + smoke tests need it)
 python tests/make_samples.py             # regenerate synthetic samples
-python -m pytest tests/ -q               # parsers, walk, OCR, API, streaming, per-doc cap
+python -m pytest tests/ -q               # parsers, walk, OCR, API, streaming, per-doc cap,
+                                          #   query log, filter extraction, eval metrics
 python tests/test_parsers.py             # human-readable dump of real chunk output
 python tests/smoke_pipeline.py           # full ingest→retrieve→answer with mock models
 ```
@@ -382,6 +447,7 @@ scripts/
   materialize_corpus.sh   host: sync-folder → ./.staging (reads corpora + excludes from config)
   migrate_index_from_docker.sh   copy an existing Docker index → ./.data (no re-ingest)
   atlas_sample.py         export a privacy-stripped sample of the semantic map
+  eval.sh                 run the retrieval eval against the host-direct index (venv + env set)
 alambique_index/
   config.py               typed access to config.yaml (+ env overrides, tag slugs)
   walk.py                 corpus file walking (include/exclude) — unit-tested
@@ -393,11 +459,19 @@ alambique_index/
   ingest.py               parse → chunk → embed → store (+ stats.json, tag keys)
   retrieve.py             hybrid BM25 + vector + over-fetch/per-doc-cap/rerank controls
   ask.py                  query()/query_stream() core → CLI (condense, citations)
-  api.py                  localhost API + console (/ask, /ask/stream, /facets, /source, /health)
+  qlog.py                 local SQLite query log (stdlib-only; powers /dashboard)
+  queryfilters.py         rule-based filter extraction from question phrasing (stdlib-only)
+  evaluation.py           retrieval eval harness (golden set → hit@k / MRR, CLI gate)
+  api.py                  localhost API + console (/ask, /ask/stream, /facets, /source, /health,
+                          /dashboard, /feedback, /metrics/*)
   atlas.py                2-D projection of the embeddings for the Atlas view
-  provenance.py           source-locator/citation helpers
+  cluster_labels.py       c-TF-IDF topic labels for the Atlas clusters
+  provenance.py           corpus → folder → document → chunk tree from the ingest manifest
   web/                    the local console (single-file, offline, no build step)
-tests/                    make_samples · test_parsers · test_walk · test_ocr · test_api · smoke_pipeline
+                          index.html · dashboard.html · fonts/ · img/
+tests/                    make_samples · test_parsers · test_walk · test_ocr · test_api
+                          · test_qlog · test_queryfilters · test_eval · smoke_pipeline
+                          · eval/golden.yaml
 ```
 
 ---

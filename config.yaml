@@ -83,6 +83,9 @@ retrieval:
   over_fetch: 3           # retrieve top_k*over_fetch candidates, then trim (more precise)
   max_per_doc: 2          # at most N chunks from any single document in the final results
   min_score_ratio: 0.0    # drop fused hits scoring below ratio*top_score (0 = off)
+  filter_extraction: true # infer corpus/doc_type filters from phrasing ("my notes on…",
+                          # "the paper that…", "…recipe") when no explicit filter is set.
+                          # Conservative rules only; explicit filters always win.
   rerank: "bge"           # "off" | "bge" | "llm" — reorder the candidate pool for precision
   rerank_model: "BAAI/bge-reranker-v2-m3"   # cross-encoder for rerank:bge (needs the rerank extra)
 
@@ -95,6 +98,14 @@ vector_store:
     url: "http://localhost:6333"
     api_key: ""
     path: ""              # set to a folder for server-less embedded Qdrant instead of a server
+
+logging:
+  # Log every ask/stream/trace to a local SQLite DB (queries, per-stage results,
+  # citations, latency). Strictly observational — never influences ranking.
+  # Powers the retrieval quality dashboard at /dashboard. Kill switch: false
+  # here, or CORPUS_RAG_QLOG=0 in the environment.
+  queries: true
+  # path: ""              # default: <data_dir>/qlog.sqlite (next to the Chroma index)
 
 server:
   bind: "127.0.0.1"       # localhost only; never 0.0.0.0
