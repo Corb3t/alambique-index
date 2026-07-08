@@ -25,6 +25,15 @@ corpus:
     mount:  "/corpus/cooking"                # they don't pollute non-cooking queries)
     include: ["**/*.pdf", "**/*.epub"]
     exclude: []
+  uploads:
+    # Files added LIVE through the console upload panel (+ Add) or the web-capture
+    # bookmarklet land here. Deliberately has NO `source:` — there is nothing in a
+    # sync folder to mirror, so materialize_corpus.sh skips it and never wipes what
+    # you've uploaded. Its own corpus so fresh chunks get a distinct colour and glow
+    # as they settle into the Atlas. Host-direct it resolves under ./.staging/uploads.
+    mount:  "/corpus/uploads"
+    include: ["**/*.pdf", "**/*.epub", "**/*.md", "**/*.markdown"]
+    exclude: []
 
 staging:
   # Host-side materialized copy of the corpus (downloaded out of the source folders).
@@ -36,6 +45,11 @@ ingest:
   # (content-hash dedup). The first copy seen owns the nodes; identical copies are
   # recorded as duplicates and not re-embedded. Set false to index every path.
   dedup: true
+  # PDF/EPUB parsing calls native libs (PyMuPDF, ebooklib) that can segfault on a
+  # malformed file. Each PDF/EPUB is parsed in its own child process with this
+  # timeout (seconds); a crash or hang skips just that file — the log names it and
+  # the run continues — instead of killing the whole ingest. 0 disables isolation.
+  isolate_parse_timeout: 300
 
 atlas:
   # The console's 2-D semantic map (the ATLAS view), built from the chunk embeddings.
@@ -106,6 +120,13 @@ logging:
   # here, or CORPUS_RAG_QLOG=0 in the environment.
   queries: true
   # path: ""              # default: <data_dir>/qlog.sqlite (next to the Chroma index)
+
+uploads:
+  # Live ingest from the console upload panel (POST /ingest/upload -> /ingest/stream).
+  # Uploaded files are saved under the 'uploads' corpus root, then parsed -> chunked ->
+  # embedded -> stored exactly like a normal ingest, so they persist and re-ingest with
+  # everything else. Nothing leaves local hardware.
+  max_mb: 100             # reject larger uploads (guards the parser + memory)
 
 server:
   bind: "127.0.0.1"       # localhost only; never 0.0.0.0

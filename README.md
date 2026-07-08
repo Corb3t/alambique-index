@@ -59,8 +59,10 @@ the reranker, or change how many results survive.
 
 **The console** (`http://localhost:8000`) is a conversation-first research assistant — streaming
 answers with inline `[n]` citations, a click-through source inspector, corpus / tag / reranker
-filters, a semantic-map Atlas, a drafting scratchpad, and a retrieval-quality dashboard fed by every
-query it logs. Fully offline, single-file, no build step.
+filters, drag-and-drop live ingest that animates a new document into the map, an **editable**
+semantic-map Atlas, a drafting scratchpad, and a retrieval-quality dashboard fed by every query it
+logs. It can also answer to Claude and other agents over a local MCP server. Fully offline,
+single-file, no build step.
 
 <p align="center">
   <img src="./assets/palette.png" alt="The Alambique Agave color system shared by the console and landing page" width="660"><br>
@@ -140,6 +142,10 @@ corpus:
     mount:  "/corpus/books_papers"
     include: ["**/*.pdf", "**/*.epub"]
     exclude: []
+  uploads:                                  # files added LIVE from the console (+ Add)
+    mount:  "/corpus/uploads"               # NB: no `source:` — materialize skips it so it
+    include: ["**/*.pdf", "**/*.epub", "**/*.md", "**/*.markdown"]  # never wipes uploads
+    exclude: []
 
 embedding:
   model: bge-m3                             # changing this forces a full re-embed
@@ -163,6 +169,13 @@ vector_store:
 logging:
   queries: true          # log every ask/stream to a local SQLite DB; powers the /dashboard.
                           # strictly observational — never influences ranking. kill switch: false
+
+uploads:
+  max_mb: 100            # reject larger live uploads (guards the parser + memory)
+
+ingest:
+  isolate_parse_timeout: 300  # parse each PDF/EPUB in a child process; a crash/hang skips just
+                              # that file instead of killing the whole run. 0 = parse in-process
 ```
 
 Split your corpus into as many named collections as you like — the web console can scope queries
@@ -303,8 +316,11 @@ The console is a conversation-first research assistant:
 - **Filters**: corpus, doc-type, tag chips, top-k, per-doc cap, and reranker (`bge`/`llm`) — or let
   phrasing set them for you (see [Filter extraction](#filter-extraction) below).
 - **Status** popover: store status, per-corpus counts, last indexed, OCR backlog.
+- **Live ingest**: drop a file (or clip a web page) into the console and watch it get parsed,
+  chunked, embedded, and fly into the map in real time — see [Live ingest](#live-ingest--watch-a-document-land).
 - **Atlas**: a 2-D semantic map of the corpus (UMAP/PCA over the chunk embeddings, KMeans-colored,
-  c-TF-IDF cluster labels).
+  c-TF-IDF cluster labels) — now **editable**: box-select chunks and delete them with undo, see
+  [Editable Atlas](#editable-atlas--prune-the-map).
 - **Scratchpad**: pin answers and passages, edit into a draft, export Markdown.
 - Fully self-hosted fonts and assets — **no CDN, no build step, works offline.**
 
@@ -320,6 +336,7 @@ curl -s localhost:8000/ask        -H 'content-type: application/json' -d '{"ques
 curl -s localhost:8000/ask/stream -H 'content-type: application/json' -d '{"question":"…","history":[],"rerank":"bge"}'
 curl -X POST localhost:8000/feedback -H 'content-type: application/json' -d '{"query_id":"…","verdict":"up"}'
 curl localhost:8000/metrics/summary  # citation rate, never-surfaced docs, stage funnel, latency
+curl -F 'file=@paper.pdf' localhost:8000/ingest/upload  # live-ingest a file into the uploads corpus
 ```
 
 `POST /ask` returns `{answer, sources[], query_id, inferred_filters}`; `POST /ask/stream` streams
@@ -327,7 +344,47 @@ NDJSON events (`condensed` → `filters?` → `sources` → `token…` → `done
 `query_id` used to submit `/feedback`). Both accept `tags`, `corpus`, `doc_type`, `top_k`,
 `max_per_doc`, `rerank`, and `history`. `GET /source` serves a document for the inspector
 (path-constrained to the corpus). `GET /metrics/summary | /metrics/docs | /metrics/funnel |
-/metrics/latency | /metrics/recent` back the dashboard. Interactive docs at `/docs`.
+/metrics/latency | /metrics/recent` back the dashboard. `POST /ingest/upload` +
+`POST /ingest/stream` + `GET /ingest/uploads` power live ingest; `POST /chunk/delete` +
+`POST /chunk/restore` back the editable Atlas. Interactive docs at `/docs`.
+
+### Live ingest — watch a document land
+
+You don't have to leave the console to add to your library. The **`+ Add`** panel takes a file —
+Markdown, PDF, or EPUB — and ingests it **live**: it's parsed, chunked, and embedded exactly like a
+normal ingest run, then the new chunks **animate into the Atlas** as glowing points settling among
+their nearest neighbours, so you can literally see where a document lands in your knowledge space
+before the upload panel even closes. It streams the journey as NDJSON (`POST /ingest/upload` saves
+the file, `POST /ingest/stream` emits parse → chunk → embed → *landing* events with each new chunk's
+map coordinates and closest existing neighbours), and it's idempotent — re-adding the same file
+updates in place rather than duplicating.
+
+Uploaded files live in their own **`uploads` corpus** (see [Configuration](#configuration)). That
+collection deliberately has **no `source:`** — there's nothing in a sync folder to mirror, so
+`materialize_corpus.sh` skips it and never clobbers what you've added by hand. Because it's a normal
+corpus, uploads persist, re-ingest with everything else, and get their own colour on the map. Nothing
+about this touches the network: the file is read locally, embedded by your local model, and stored in
+your local vector DB.
+
+**Clip a web page.** A small **web-capture bookmarklet** grabs the readable text of the page you're
+on and hands it to the console via `postMessage` — the console shows a confirmation card, then runs it
+through the very same `POST /ingest/upload` path. The bookmarklet opens **no CORS holes** and sends
+nothing anywhere but your own localhost console; you confirm every capture before it's ingested.
+
+### Editable Atlas — prune the map
+
+The Atlas isn't just a read-only picture anymore. Flip on **Select** mode, **box-select** a cluster
+of points, and **delete** those chunks straight from the map — useful for pulling a noisy document,
+an accidental duplicate, or a stray OCR-garbled page out of retrieval without re-running an ingest.
+Every delete drops into a **session undo** buffer (LIFO), so a mis-drag is one click — or one toast —
+away from being restored, vectors and metadata intact.
+
+It's lossless and honest about durability: deletes are backed by `POST /chunk/delete` /
+`POST /chunk/restore`, which export each affected record's **raw metadata and its verbatim embedding
+vector** before removal (so a restore re-inserts the exact same point, not a re-embed) and prune the
+node IDs from the ingest manifest so they won't silently reappear. Deletions are **durable until you
+re-ingest the source document** — the map is a view over your library, so re-adding a file brings its
+chunks back by design.
 
 ### Filter extraction
 
@@ -335,6 +392,52 @@ When no explicit filter is set, conservative phrasing rules infer one from the q
 "my notes on…" scopes to a Markdown/notes corpus, "the paper that…" to PDFs, "…recipe" to a
 `cooking`-tagged corpus if you have one. Explicit filters always win, and the console shows an
 "↳ scoped to: … auto" line when it fires. Turn it off with `retrieval.filter_extraction: false`.
+
+---
+
+## Use it from Claude (MCP server)
+
+The same retrieval core is exposed as a local [Model Context Protocol](https://modelcontextprotocol.io)
+server, so Claude — Desktop, Code, or Cowork — and any other MCP client can query your library
+directly. It runs **in-process over stdio**: the client spawns the module, which imports the package
+and calls the same `ask` / retrieval path the CLI and web console use. Nothing is published, no port
+is opened, and the corpus never leaves local hardware — the same privacy posture as everything else
+here. It works whether or not the web app is running.
+
+```bash
+pip install -r requirements-mcp.txt      # adds the `mcp` SDK (optional extra)
+python -m alambique_index.mcp_server      # manual run; normally the client launches it
+```
+
+Tools exposed to the agent:
+
+- **`ask(question, corpus?, doc_type?, tags?, top_k?)`** — grounded answer with inline `[n]`
+  citations and a numbered source list. Runs the full hybrid-retrieval + generation pipeline.
+- **`search(query, corpus?, doc_type?, tags?, k?)`** — retrieval only, no generation: ranked
+  passages with scores and provenance. Faster, and never spins the generation model.
+- **`list_facets()`** — the valid `corpus` / `doc_type` / `tag` values, so the agent can scope a
+  query without guessing.
+
+Wire it into a client by adding an entry to its MCP config (e.g. Claude Desktop's
+`claude_desktop_config.json` under `mcpServers`, or `claude mcp add` for Claude Code):
+
+```jsonc
+{
+  "mcpServers": {
+    "alambique": {
+      "command": "python",
+      "args": ["-m", "alambique_index.mcp_server"],
+      "env": { "CORPUS_RAG_CONFIG": "/abs/path/to/Alambique-Index/config.yaml" }
+    }
+  }
+}
+```
+
+Point `command` at the interpreter that has the project installed (e.g. the repo's
+`.venv/bin/python`), and set `CORPUS_RAG_CONFIG` so the server finds your `config.yaml` regardless of
+the client's working directory. Since generation is local, `ask` needs Ollama running with your
+models pulled; a connection failure comes back as an actionable hint, and `search` / `list_facets`
+work without the generation model at all.
 
 ---
 
@@ -383,8 +486,9 @@ footers, and a references section):
 ```bash
 pip install -r requirements.txt pytest   # full stack (API + smoke tests need it)
 python tests/make_samples.py             # regenerate synthetic samples
-python -m pytest tests/ -q               # parsers, walk, OCR, API, streaming, per-doc cap,
-                                          #   query log, filter extraction, eval metrics
+python -m pytest tests/ -q               # parsers, walk, OCR, API, streaming, per-doc cap, query
+                                          #   log, filter extraction, eval metrics, MCP tools,
+                                          #   live single-file ingest, chunk delete/restore
 python tests/test_parsers.py             # human-readable dump of real chunk output
 python tests/smoke_pipeline.py           # full ingest→retrieve→answer with mock models
 ```
@@ -441,6 +545,7 @@ Dockerfile                + Tesseract/ocrmypdf for OCR; optional BGE reranker (I
 requirements.txt          pinned; regenerate from requirements.in
 requirements-rerank.txt   optional: BGE cross-encoder reranker (torch)
 requirements-atlas.txt    optional: UMAP for the semantic map
+requirements-mcp.txt      optional: MCP SDK (expose the library to Claude / MCP clients)
 Alambique-Index.command     native launcher (self-installing venv → serves the console)
 Update-Index.command      native re-ingest launcher
 scripts/
@@ -452,26 +557,30 @@ alambique_index/
   config.py               typed access to config.yaml (+ env overrides, tag slugs)
   walk.py                 corpus file walking (include/exclude) — unit-tested
   parsers/                markdown_ia.py · epub.py · pdf.py — unit-tested
+  safe_parse.py           parse each PDF/EPUB in an isolated child process (crash-proof ingest)
   ocr.py                  local ocrmypdf/Tesseract, cached by file hash
   manifest.py             SHA-1 idempotency + per-file needs_ocr backlog
-  store.py                pluggable vector store (Chroma | Qdrant)
+  store.py                pluggable vector store (Chroma | Qdrant); export/import for lossless delete
   models.py               embedding/chat factory (Ollama, or mock for tests)
   ingest.py               parse → chunk → embed → store (+ stats.json, tag keys)
+  ingest_one.py           single-file LIVE ingest generator (streams parse→chunk→embed→map landing)
   retrieve.py             hybrid BM25 + vector + over-fetch/per-doc-cap/rerank controls
   ask.py                  query()/query_stream() core → CLI (condense, citations)
+  mcp_server.py           stdio MCP server — ask/search/list_facets tools for Claude & MCP clients
   qlog.py                 local SQLite query log (stdlib-only; powers /dashboard)
   queryfilters.py         rule-based filter extraction from question phrasing (stdlib-only)
   evaluation.py           retrieval eval harness (golden set → hit@k / MRR, CLI gate)
   api.py                  localhost API + console (/ask, /ask/stream, /facets, /source, /health,
-                          /dashboard, /feedback, /metrics/*)
+                          /dashboard, /feedback, /metrics/*, /ingest/*, /chunk/*, /atlas/*)
   atlas.py                2-D projection of the embeddings for the Atlas view
   cluster_labels.py       c-TF-IDF topic labels for the Atlas clusters
   provenance.py           corpus → folder → document → chunk tree from the ingest manifest
   web/                    the local console (single-file, offline, no build step)
-                          index.html · dashboard.html · fonts/ · img/
+                          index.html · dashboard.html · ingest.js (live upload) ·
+                          observatory.js (editable Atlas) · fonts/ · img/
 tests/                    make_samples · test_parsers · test_walk · test_ocr · test_api
-                          · test_qlog · test_queryfilters · test_eval · smoke_pipeline
-                          · eval/golden.yaml
+                          · test_qlog · test_queryfilters · test_eval · test_mcp
+                          · test_ingest_one · test_delete · smoke_pipeline · eval/golden.yaml
 ```
 
 ---
@@ -481,7 +590,8 @@ tests/                    make_samples · test_parsers · test_walk · test_ocr 
 Python · [LlamaIndex](https://www.llamaindex.ai) · [Chroma](https://www.trychroma.com) (pluggable to
 Qdrant) · [Ollama](https://ollama.com) (`bge-m3` embeddings, `qwen3:30b-a3b` generation) ·
 BM25 + dense hybrid retrieval · BGE-Reranker-v2-m3 cross-encoder · PyMuPDF / pdfplumber /
-ocrmypdf + Tesseract · FastAPI · vanilla-JS web console · Docker / OrbStack.
+ocrmypdf + Tesseract · FastAPI · [Model Context Protocol](https://modelcontextprotocol.io) server ·
+vanilla-JS web console · Docker / OrbStack.
 
 ---
 
