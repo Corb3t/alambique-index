@@ -5,3 +5,6 @@
 __pycache__/
 *.pyc
 .env
+
+# Wrangler local cache (account id/email — never commit)
+.wrangler/
